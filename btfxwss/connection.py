@@ -5,8 +5,6 @@ import time
 from queue import Queue
 from threading import Thread, Event, Timer
 
-# Import Third-Party
-import websocket
 
 # Import Homebrew
 
@@ -37,7 +35,12 @@ class WebSocketConnection(Thread):
                           logging.INFO.
         :param kwargs: kwargs for Thread.__ini__()
         """
+
+        # Import Third-Party
+        import websocket
+
         # Queue used to pass data up to BTFX client
+
         self.q = Queue()
 
         # Connection Settings
@@ -99,6 +102,9 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        # Import Third-Party
+        import websocket
+
         self.conn = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
