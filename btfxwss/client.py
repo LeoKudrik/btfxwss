@@ -29,7 +29,8 @@ class BtfxWss:
         self.secret = secret if secret else ''
 
         # Set up book-keeping variables & configurations
-        self.channel_configs = defaultdict(dict)  # Variables, as set by subscribe command
+        self.channel_configs = defaultdict(dict)  # Variables, as set by
+        # subscribe command
 
         self.conn = WebSocketConnection(log_level=log_level,
                                         **wss_kwargs)
@@ -45,7 +46,8 @@ class BtfxWss:
         if key in self.queue_processor.tickers:
             return self.queue_processor.tickers[key]
         else:
-            raise KeyError(pair)
+            self.conn.disconnect()
+            return None
 
     def books(self, pair):
         key = ('book', pair)
@@ -79,7 +81,9 @@ class BtfxWss:
         self.conn.start()
         self.queue_processor.start()
 
-    def stop(self):
+    def stop(self, _log=None):
+        if _log:
+            log.debug(str(_log))
         self.conn.disconnect()
         self.queue_processor.join()
 
@@ -108,7 +112,10 @@ class BtfxWss:
         q = {'event': 'subscribe', 'channel': channel_name}
         q.update(**kwargs)
         log.debug("_subscribe: %s", q)
-        self.conn.send(**q)
+        try:
+            self.conn.send(**q)
+        except Exception as e:
+            self.stop(str(e))
 
     def _unsubscribe(self, channel_name, identifier, **kwargs):
 

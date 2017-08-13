@@ -85,7 +85,6 @@ class WebSocketConnection(Thread):
         self.disconnect_called.set()
         if self.conn:
             self.conn.close()
-        self.join(timeout=1)
 
     def reconnect(self):
         """Issues a reconnection by setting the reconnect_required event.
@@ -114,18 +113,20 @@ class WebSocketConnection(Thread):
         )
 
         self.conn.run_forever()
+        self.disconnect()
 
-        while self.reconnect_required.is_set():
-            if not self.disconnect_called.is_set():
-                self.log.info("Attempting to connect again in %s seconds."
-                              % self.reconnect_interval)
-                self.state = "unavailable"
-                time.sleep(self.reconnect_interval)
-
-                # We need to set this flag since closing the socket will
-                # set it to False
-                self.conn.keep_running = True
-                self.conn.run_forever()
+        # while self.reconnect_required.is_set():
+        #     if not self.disconnect_called.is_set():
+        #         self.log.info("Attempting to connect again in %s seconds."
+        #                       % self.reconnect_interval)
+        #         self.state = "unavailable"
+        #         time.sleep(self.reconnect_interval)
+        #
+        #         # We need to set this flag since closing the socket will
+        #         # set it to False
+        #         print('Reconnect!')
+        #         self.conn.keep_running = True
+        #         self.conn.run_forever()
 
     def run(self):
         """Main method of Thread.
@@ -142,7 +143,6 @@ class WebSocketConnection(Thread):
         self._stop_timers()
 
         raw, received_at = message, time.time()
-
 
         try:
             data = json.loads(raw)
