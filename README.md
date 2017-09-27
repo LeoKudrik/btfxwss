@@ -44,6 +44,10 @@ Starting a session and subscribing to channels.
     wss.subscribe_to_ticker('BTCUSD')
     wss.subscribe_to_order_book('BTCUSD')
     
+<<<<<<< HEAD
+=======
+    
+>>>>>>> a5f1d4b867647d9479712c5e55104bf91a31b95e
     # Do something else
     t = time.time()
     while time.time() - t < 10:

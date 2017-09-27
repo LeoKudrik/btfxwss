@@ -1,5 +1,8 @@
 # Import Built-Ins
 import logging
+import time
+import hmac
+import hashlib
 from collections import defaultdict
 
 # Import Homebrew
@@ -37,9 +40,97 @@ class BtfxWss:
         self.queue_processor = QueueProcessor(self.conn.q,
                                               log_level=log_level)
 
+    ##############
+    # Properties #
+    ##############
+
+    @property
+    def orders(self):
+        return self.queue_processor.account['Orders']
+
+    @property
+    def positions(self):
+        return self.queue_processor.account['Positions']
+
+    @property
+    def orders(self):
+        return self.queue_processor.account['Orders']
+
+    @property
+    def historical_orders(self):
+        return self.queue_processor.account['Historical Orders']
+
+    @property
+    def trades(self):
+        return self.queue_processor.account['Trades']
+
+    @property
+    def loans(self):
+        return self.queue_processor.account['Loans']
+
+    @property
+    def historical_loans(self):
+        return self.queue_processor.account['Historical Loans']
+
+    @property
+    def wallets(self):
+        return self.queue_processor.account['Wallets']
+
+    @property
+    def balance_info(self):
+        return self.queue_processor.account['Balance Info']
+
+    @property
+    def margin_info(self):
+        return self.queue_processor.account['Margin Info']
+
+    @property
+    def offers(self):
+        return self.queue_processor.account['Offers']
+
+    @property
+    def historical_offers(self):
+        return self.queue_processor.account['Historical Offers']
+
+    @property
+    def funding_info(self):
+        return self.queue_processor.account['Funding Info']
+
+    @property
+    def credits(self):
+        return self.queue_processor.account['Credits']
+
+    @property
+    def historical_credits(self):
+        return self.queue_processor.account['Historical Credits']
+
     @property
     def channel_directory(self):
         return self.queue_processor.channel_directory
+
+    @property
+    def funding_trades(self):
+        return self.queue_processor.account['Funding_trades']
+
+    @property
+    def notifications(self):
+        return self.queue_processor.account['Notifications']
+
+    ##############################################
+    # Client Initialization and Shutdown Methods #
+    ##############################################
+
+    def start(self):
+        self.conn.start()
+        self.queue_processor.start()
+
+    def stop(self):
+        self.conn.disconnect()
+        self.queue_processor.join()
+
+    ##########################
+    # Data Retrieval Methods #
+    ##########################
 
     def tickers(self, pair):
         key = ('ticker', pair)
@@ -77,9 +168,9 @@ class BtfxWss:
         else:
             raise KeyError(pair)
 
-    def start(self):
-        self.conn.start()
-        self.queue_processor.start()
+    ##########################################
+    # Subscription and Configuration Methods #
+    ##########################################
 
     def stop(self, _log=None):
         if _log:
@@ -202,3 +293,56 @@ class BtfxWss:
             self._unsubscribe('candles', identifier, key=key, **kwargs)
         else:
             self._subscribe('candles', identifier, key=key, **kwargs)
+
+    def authenticate(self):
+        if not self.key and not self.secret:
+            raise ValueError("Must supply both key and secret key for API!")
+        nonce = str(int(time.time() * 1000))
+        auth_string = 'AUTH' + nonce
+        auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
+                            hashlib.sha384).hexdigest()
+
+        payload = {'event': 'auth', 'apiKey': self.key, 'authSig': auth_sig,
+                   'authPayload': auth_string, 'authNonce': nonce}
+        self.conn.send(**payload)
+
+    def new_order(self, **order_settings):
+        """Post a new Order va Websocket.
+
+        :param kwargs:
+        :return:
+        """
+        self._send_auth_command('on', order_settings)
+
+    def cancel_order(self, multi=False, **order_identifiers):
+        """Cancel one or multiple orders via Websocket.
+
+        :param multi: bool, whether order_settings contains settings for one, or
+                      multiples orders
+        :param order_identifiers: Identifiers for the order(s) you with to cancel
+        :return:
+        """
+        if multi:
+            self._send_auth_command('oc_multi', order_identifiers)
+        else:
+            self._send_auth_command('oc', order_identifiers)
+
+    def order_multi_op(self, *operations):
+        """Execute multiple, order-related operations via Websocket.
+
+        :param operations: operations to send to the websocket
+        :return:
+        """
+        self._send_auth_command('ox_multi', operations)
+
+    def calc(self, *calculations):
+        """Request one or several operations via Websocket.
+
+        :param calculations: calculations as strings to send to the websocket
+        :return:
+        """
+        self._send_auth_command('calc', calculations)
+
+    def _send_auth_command(self, channel_name, data):
+        payload = [0, channel_name, None, data]
+        self.conn.send(list_data=payload)
